@@ -205,7 +205,7 @@ while cont:
             disp.fill(screen=scr)
             disp.show()
             if withEEG:
-                p_port.setData(2)  # Instructions Onset
+                p_port.setData(int(trigger_map["Instructions Onset"]))
 
             item_starttime = task_clock.getTime()
             item_condition = 'text'
@@ -251,18 +251,18 @@ while cont:
                             if '1' in visual_screen_name:
                                 pre_text = '1_option'
                                 if withEEG and current_rep == 0:
-                                    p_port.setData(5)  # Block 1 Start (1-choice)
+                                    p_port.setData(int(trigger_map["Block 1 Start (1-choice)"]))
                             elif '2' in visual_screen_name:
                                 pre_text = '2_options'
                                 if withEEG and current_rep == 0:
-                                    p_port.setData(6)  # Block 2 Start (2-choice)
+                                    p_port.setData(int(trigger_map["Block 2 Start (2-choice)"]))
                             elif '4' in visual_screen_name or 'practice' in visual_screen_name.lower():
                                 pre_text = '4_options'
                                 if withEEG and current_rep == 0:
                                     if 'practice' in visual_screen_name.lower():
-                                        p_port.setData(3)  # Practice Start
+                                        p_port.setData(int(trigger_map["Practice Start"]))
                                     else:
-                                        p_port.setData(7)  # Block 3 Start (4-choice)
+                                        p_port.setData(int(trigger_map["Block 3 Start (4-choice)"]))
                     
                     # NULL/WAITING STIMULUS DISPLAY
                     if cur_item == 'NULL':
@@ -273,7 +273,7 @@ while cont:
                         disp.fill(screen=scr)
                         disp.show()
                         if withEEG:
-                            p_port.setData(1)  # Fixation / Null
+                            p_port.setData(int(trigger_map["Fixation / Null"]))
 
                         item_starttime = task_clock.getTime()
                         item_condition = cur_item
@@ -298,7 +298,7 @@ while cont:
                         disp.fill(screen=scr)
                         disp.show()
                         if withEEG:
-                            p_port.setData(10)  # Stimulus Onset
+                            p_port.setData(int(trigger_map["Stimulus Onset"]))
 
                         item_starttime = task_clock.getTime()
                         item_condition = cur_item
@@ -340,7 +340,7 @@ while cont:
                                         item_accuracy = 0
                                     slt.pushToStreamLabel(f'Response: {visual_screen_name}_{current_rep}_{item_accuracy}')
                                     if withEEG:
-                                        p_port.setData(128)  # Response (any)
+                                        p_port.setData(int(trigger_map["Response (any)"]))
                                     break
 
                         last_stim_responsetime = item_responsetime
