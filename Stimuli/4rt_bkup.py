@@ -1,3 +1,4 @@
+import platform
 import psychopy.visual
 from psychopy import prefs
 from psychopy import core, event
@@ -12,6 +13,8 @@ import os
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+
+os_type = platform.system()
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--filename', dest='filename', type=str, help='name of output data file (.csv)', required=True)
@@ -132,16 +135,28 @@ out_dict = {'sectionname': ['starttime', 'endtime', 'duration', 'responsetime', 
 
 def on_click(x, y, button, pressed):
     global current_value, response_received
-    if pressed:
-        if button == pynput_mouse.Button.left:
-            current_value = 1
-        elif button == pynput_mouse.Button.middle:
-            current_value = 2
-        elif button == pynput_mouse.Button.x1:
-            current_value = 3
-        elif button == pynput_mouse.Button.right:
-            current_value = 4
-        response_received = True
+    if os_type == 'Linux':
+        if pressed:
+            if button == pynput_mouse.Button.left:
+                current_value = 1
+            elif button == pynput_mouse.Button.middle:
+                current_value = 2
+            elif button == pynput_mouse.Button.button8:
+                current_value = 3
+            elif button == pynput_mouse.Button.right:
+                current_value = 4
+            response_received = True
+    else:
+        if pressed:
+            if button == pynput_mouse.Button.left:
+                current_value = 1
+            elif button == pynput_mouse.Button.middle:
+                current_value = 2
+            elif button == pynput_mouse.Button.x1:
+                current_value = 3
+            elif button == pynput_mouse.Button.right:
+                current_value = 4
+            response_received = True
     return True
 
 listener = pynput_mouse.Listener(on_click=on_click)

@@ -1,6 +1,7 @@
+import platform
 import psychopy.visual
 from psychopy import prefs
-from psychopy import core, event
+from psychopy import core, event, parallel
 from pynput import mouse as pynput_mouse
 from pygaze.libinput import Keyboard
 from pygaze.libscreen import Display, Screen
@@ -12,10 +13,24 @@ import os
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import json
+import stimlsltools as slt
+
+os_type = platform.system()
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--filename', dest='filename', type=str, help='name of output data file (.csv)', required=True)
+parser.add_argument('--withEEG', dest='withEEG', type=bool, help='True if running with EEG', default=False)
+parser.add_argument('--portAddress', dest='portAddress', type=int, help='address of parallel port', default=0)
+
 args = parser.parse_args()
+
+withEEG = args.withEEG
+
+if withEEG:
+    p_port = parallel.ParallelPort(address=args.portAddress)
+    with open('Stimuli/trigger_map.json', 'r') as f:
+        trigger_map = json.load(f)
 
 practice_dirs = '/Users/AP-CNL/Desktop/4RT/Stimuli/Schedules/practice'
 
@@ -132,16 +147,28 @@ out_dict = {'sectionname': ['starttime', 'endtime', 'duration', 'responsetime', 
 
 def on_click(x, y, button, pressed):
     global current_value, response_received
-    if pressed:
-        if button == pynput_mouse.Button.left:
-            current_value = 1
-        elif button == pynput_mouse.Button.middle:
-            current_value = 2
-        elif button == pynput_mouse.Button.x1:
-            current_value = 3
-        elif button == pynput_mouse.Button.right:
-            current_value = 4
-        response_received = True
+    if os_type == 'Linux':
+        if pressed:
+            if button == pynput_mouse.Button.left:
+                current_value = 1
+            elif button == pynput_mouse.Button.middle:
+                current_value = 2
+            elif button == pynput_mouse.Button.button8:
+                current_value = 3
+            elif button == pynput_mouse.Button.right:
+                current_value = 4
+            response_received = True
+    else:
+        if pressed:
+            if button == pynput_mouse.Button.left:
+                current_value = 1
+            elif button == pynput_mouse.Button.middle:
+                current_value = 2
+            elif button == pynput_mouse.Button.x1:
+                current_value = 3
+            elif button == pynput_mouse.Button.right:
+                current_value = 4
+            response_received = True
     return True
 
 listener = pynput_mouse.Listener(on_click=on_click)
@@ -169,11 +196,16 @@ while cont:
 
         scr.screen.clear()
 
+        slt.pushToStreamLabel('Onset_' + visual_screen_name)
+
+        # INSTRUCTIONS DISPLAY
         if isinstance(screen_content, str):
             center_text.text = screen_content
             scr.screen.append(center_text)
             disp.fill(screen=scr)
             disp.show()
+            if withEEG:
+                p_port.setData(2)  # Instructions Onset
 
             item_starttime = task_clock.getTime()
             item_condition = 'text'
@@ -186,6 +218,8 @@ while cont:
 
                 item_key = f"{visual_screen_name}"
                 out_dict[item_key] = [item_starttime, item_endtime, item_duration, None, None, item_condition, None, None]
+
+                slt.pushToStreamLabel('Offset_' + visual_screen_name)
 
                 visual_screen_idx += 1
                 if visual_screen_idx >= len(visual_screens):
@@ -209,18 +243,28 @@ while cont:
                     item_starttime = task_clock.getTime()
                     item_condition = cur_item
 
-                    
+                    # Determine block type (practice vs task)
                     if visual_screen_name[-1] == 's':
-                            pre_text = 'singles'
+                        pre_text = 'singles'
                     else:
                         if 'stim' in visual_screen_name.lower():
                             if '1' in visual_screen_name:
                                 pre_text = '1_option'
+                                if withEEG and current_rep == 0:
+                                    p_port.setData(5)  # Block 1 Start (1-choice)
                             elif '2' in visual_screen_name:
                                 pre_text = '2_options'
+                                if withEEG and current_rep == 0:
+                                    p_port.setData(6)  # Block 2 Start (2-choice)
                             elif '4' in visual_screen_name or 'practice' in visual_screen_name.lower():
                                 pre_text = '4_options'
+                                if withEEG and current_rep == 0:
+                                    if 'practice' in visual_screen_name.lower():
+                                        p_port.setData(3)  # Practice Start
+                                    else:
+                                        p_port.setData(7)  # Block 3 Start (4-choice)
                     
+                    # NULL/WAITING STIMULUS DISPLAY
                     if cur_item == 'NULL':
                         image_path = image_text.format(f'{pre_text}/waiting.png')
 
@@ -228,6 +272,8 @@ while cont:
                         scr.screen.append(image)
                         disp.fill(screen=scr)
                         disp.show()
+                        if withEEG:
+                            p_port.setData(1)  # Fixation / Null
 
                         item_starttime = task_clock.getTime()
                         item_condition = cur_item
@@ -244,12 +290,15 @@ while cont:
                         current_rep += 1
 
                     else:
+                        # TASK/PRACTICE STIMULUS DISPLAY
                         image_path = image_text.format(f'{pre_text}/{cur_item}.png')
 
                         image.setImage(image_path)
                         scr.screen.append(image)
                         disp.fill(screen=scr)
                         disp.show()
+                        if withEEG:
+                            p_port.setData(10)  # Stimulus Onset
 
                         item_starttime = task_clock.getTime()
                         item_condition = cur_item
@@ -278,6 +327,7 @@ while cont:
                                     cont = False
                                     break
                                 
+                                # RESPONSE RECEIVED AND RECORDED
                                 if response_received:
                                     item_responsetime = task_clock.getTime()
                                     if current_value == 1: item_response = 'left'
@@ -288,6 +338,9 @@ while cont:
                                         item_accuracy = 1
                                     else:
                                         item_accuracy = 0
+                                    slt.pushToStreamLabel(f'Response: {visual_screen_name}_{current_rep}_{item_accuracy}')
+                                    if withEEG:
+                                        p_port.setData(128)  # Response (any)
                                     break
 
                         last_stim_responsetime = item_responsetime
@@ -306,6 +359,8 @@ while cont:
                         current_rep += 1
 
                 else:
+                    slt.pushToStreamLabel('Offset_' + visual_screen_name)
+                    
                     if visual_screen_name in practice_blocks:
                         if accuracy_list:
                             mean_accuracy = np.mean(accuracy_list)
@@ -338,6 +393,7 @@ while cont:
                     if visual_screen_idx >= len(visual_screens):
                         cont = False
 
+        # EXAMPLE STIMULUS DISPLAY
         elif isinstance(screen_content, list):
             if current_rep < len(screen_content):
                 cur_item = screen_content[current_rep]
@@ -348,6 +404,7 @@ while cont:
                 item_condition = None
                 item_delta = None
                
+                # FEEDBACK DISPLAY
                 if cur_item == 'feedback':
                     if last_stim_responsetime is None:
                         center_text.text = "Too Slow."
@@ -373,6 +430,7 @@ while cont:
                     out_dict[item_key] = [item_starttime, item_endtime, item_duration, item_responsetime, item_delta, item_condition, item_response, item_accuracy]
                     current_rep += 1
                 else:
+                    # EXAMPLE STIMULUS DISPLAY
                     if '1' in visual_screen_name:
                         pre_text = '1_option'
                     elif '2' in visual_screen_name:
@@ -401,10 +459,10 @@ while cont:
                     item_accuracy = 0
 
                     if 'break' in visual_screen_name.lower():
-                            while task_clock.getTime() - item_starttime < 60:
-                                keys = event.getKeys(keyList=['space'])
-                                if 'space' in keys:
-                                    break
+                        while task_clock.getTime() - item_starttime < 60:
+                            keys = event.getKeys(keyList=['space'])
+                            if 'space' in keys:
+                                break
                     else:
                         while task_clock.getTime() - item_starttime < image_display_duration:
                             keys = event.getKeys(keyList=['escape'])
