@@ -15,6 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 import stimlsltools as slt
+from PIL import Image
 
 os_type = platform.system()
 
@@ -26,28 +27,29 @@ parser.add_argument('--portAddress', dest='portAddress', type=int, help='address
 args = parser.parse_args()
 
 withEEG = args.withEEG
+stimuli_dirs = '/home/nkirs/Desktop/MOBI/Stimuli'
 
 if withEEG:
     p_port = parallel.ParallelPort(address=args.portAddress)
-    with open('Stimuli/trigger_map.json', 'r') as f:
+    with open(f'{stimuli_dirs}/trigger_map.json', 'r') as f:
         trigger_map = json.load(f)
 
-practice_dirs = '/Users/AP-CNL/Desktop/4RT/Stimuli/Schedules/practice'
+practice_dirs = f'{stimuli_dirs}/Schedules/practice'
 
 visuals = {
     '4RTStart': ['Next activity starting soon.', 'space', True],
     'Instructions1': ["You will see images presented on the screen that correspond to the buttons on the device you are holding.\n\nWhen the image appears, press the corresponding button.", 'space', False],
     'Instructions2': ["At first, only the stimulus that matches the left button will appear,\n\nand so you'll only be responding using that left button.\n\nGo ahead and press the left button once you see the diagonal line appear on screen.", 'space', False],
     'Example1': [['line', 'feedback'], 'c', True],
-    'Instructions3': ["Next, the stimuli that match the left or right buttons will appear,\n\nso you'll have to respond using the left or right buttons.\n\nGo ahead and press the right button once you see the square appear on screen.", 'space', False],
+    'Instructions3': ["Next, the shapes that match the left or right buttons will appear,\n\nso you'll have to respond using the left or right buttons.\n\nGo ahead and press the right button once you see the square appear on screen.", 'space', False],
     'Example2': [['square', 'feedback'], 'c', True],
-    'Instructions4': ["In the final phase, you will respond to any of the four stimuli using all four buttons.\n\nGo ahead and press the middle button with the circle once you see the circle appear on screen.", 'space', False],
+    'Instructions4': ["In the final phase, you will respond to any of the four shapes using all four buttons.\n\nGo ahead and press the middle button with the circle once you see the circle appear on screen.", 'space', False],
     'Example4': [['circle', 'feedback'], 'c', True],
-    'Instructions5': ['Now you will have a chance to practice the task before moving on to the first phase.\n\nPay attention to the instructions on screen to know which stimuli could appear.', 'space', False],
+    'Instructions5': ['Now you will have a chance to practice the task before moving on to the first phase.\n\nThis will last about 1 minute and pay attention to the instructions on screen to know which shape could appear.', 'space', False],
     'Feedback4': [['options'], 'space', True],
     'Practice': None,
     'Practices': None,
-    'Instructions6': ['Good job on the practice trials. You can now move on to the test trials.\n\nYou will do the same task as in the practice, completing a distinct blocks of trials for each of the phases described earlied.\n\nEach block will last about 3-5 minutes long. You will have a short break in between these trials.', 'space', False],
+    'Instructions6': ['Good job on the practice trials. You can now move on to the test trials.\n\nYou will do the same task as in the practice, completing a distinct block of trials for each of the phases described earlied.\n\nEach block will last about 3-5 minutes long. You will have a short break in between these trials.', 'space', False],
     'Break1': [['options'], 'space', True],
     'Stim1': None,
     'Break1s': [['breaks'], 'space', True],
@@ -78,38 +80,29 @@ def get_order_file(order_dirs):
     random.shuffle(order_list)
     if not order_list:
         return []
-    order_list = order_list[:1]
     return [os.path.join(order_dirs, file) for file in order_list]
 
-image_text = 'Stimuli/Images/{}'
-one_opt_dirs = 'Stimuli/Schedules/1_option'
-two_opt_dirs = 'Stimuli/Schedules/2_options'
-four_opt_dirs = 'Stimuli/Schedules/4_options'
+image_text = f'{stimuli_dirs}/Images/'
+one_opt_dirs = f'{stimuli_dirs}/Schedules/1_option'
+two_opt_dirs = f'{stimuli_dirs}/Schedules/2_options'
+four_opt_dirs = f'{stimuli_dirs}/Schedules/4_options'
 
 one_opt_fname_list = get_order_file(one_opt_dirs)
 one_opt_fname = one_opt_fname_list[0] if one_opt_fname_list else None
 schedule1 = get_sched_df(one_opt_fname).reset_index(drop=True) if one_opt_fname else pd.DataFrame()
-
-one_opt_fname_list = get_order_file(one_opt_dirs)
-one_opt_fname = one_opt_fname_list[0] if one_opt_fname_list else None
+one_opt_fname = one_opt_fname_list[1] if one_opt_fname_list else None
 schedule1s = get_sched_df(one_opt_fname).reset_index(drop=True) if one_opt_fname else pd.DataFrame()
-
 
 two_opt_fname_list = get_order_file(two_opt_dirs)
 two_opt_fname = two_opt_fname_list[0] if two_opt_fname_list else None
 schedule2 = get_sched_df(two_opt_fname).reset_index(drop=True) if two_opt_fname else pd.DataFrame()
-
-two_opt_fname_list = get_order_file(two_opt_dirs)
-two_opt_fname = two_opt_fname_list[0] if two_opt_fname_list else None
+two_opt_fname = two_opt_fname_list[1] if two_opt_fname_list else None
 schedule2s = get_sched_df(two_opt_fname).reset_index(drop=True) if two_opt_fname else pd.DataFrame()
-
 
 four_opt_fname_list = get_order_file(four_opt_dirs)
 four_opt_fname = four_opt_fname_list[0] if four_opt_fname_list else None
 schedule4 = get_sched_df(four_opt_fname).reset_index(drop=True) if four_opt_fname else pd.DataFrame()
-
-four_opt_fname_list = get_order_file(four_opt_dirs)
-four_opt_fname = four_opt_fname_list[0] if four_opt_fname_list else None
+four_opt_fname = four_opt_fname_list[1] if four_opt_fname_list else None
 schedule4s = get_sched_df(four_opt_fname).reset_index(drop=True) if four_opt_fname else pd.DataFrame()
 
 visuals['Stim1'] = [schedule1, 'c', True]
@@ -122,14 +115,16 @@ visuals['Stim4s'] = [schedule4s, 'c', True]
 practice_files = [os.path.join(practice_dirs, file) for file in os.listdir(practice_dirs)]
 random.shuffle(practice_files)
 visuals['Practice'] = [pd.read_csv(practice_files[0], index_col=0, keep_default_na=False), 'c', True]
-random.shuffle(practice_files)
 visuals['Practices'] = [pd.read_csv(practice_files[0], index_col=0, keep_default_na=False), 'c', True]
 
 disp = Display(disptype='psychopy', bgc='black')
 scr = Screen(disptype='psychopy', bgc='black')
 event.Mouse(visible=False)
 center_text = psychopy.visual.TextStim(win=pygaze.expdisplay, text='', height=50, wrapWidth=1080)
-image = psychopy.visual.ImageStim(win=pygaze.expdisplay, image=None)
+ex_image_path = [os.path.join(dirs, file) for dirs, fldrs, files in os.walk(image_text) if '1_option' in dirs for file in files if file.endswith('.png')][0]
+img = Image.open(ex_image_path)
+W, H = img.size
+image = psychopy.visual.ImageStim(win=pygaze.expdisplay, image=None, size=(W*0.4, H*0.4))
 
 val_dict = {'line': 1, 'circle': 2, 'triangle': 3, 'square': 4}
 
@@ -177,6 +172,7 @@ listener.start()
 image_display_duration = 2
 practice_blocks = ['Practice', 'Practices']
 practice_attempts = {block: 0 for block in practice_blocks}
+practice_markers_sent = {block: False for block in practice_blocks}
 max_practice_attempts = 3
 
 cont = True
@@ -196,10 +192,11 @@ while cont:
 
         scr.screen.clear()
 
-        slt.pushToStreamLabel('Onset_' + visual_screen_name)
-
         # INSTRUCTIONS DISPLAY
         if isinstance(screen_content, str):
+            # Only send onset marker for instruction screens at this level
+            slt.pushToStreamLabel('Onset_' + visual_screen_name)
+            
             center_text.text = screen_content
             scr.screen.append(center_text)
             disp.fill(screen=scr)
@@ -234,6 +231,14 @@ while cont:
                     cur_item = schedule['stim_type'][current_rep]
                     display_time = schedule['duration'][current_rep]
 
+                    # Only send onset marker for actual stimuli, not NULL or feedback
+                    if cur_item != 'NULL' and cur_item != 'feedback':
+                        # Calculate the actual stimulus index by counting non-NULL, non-feedback items
+                        stim_index = sum(1 for i in range(current_rep) 
+                                       if schedule['stim_type'][i] != 'NULL' 
+                                       and schedule['stim_type'][i] != 'feedback')
+                        slt.pushToStreamLabel('Onset_' + visual_screen_name + '_' + str(stim_index))
+
                     item_responsetime = None
                     item_response = None
                     item_accuracy = None
@@ -266,19 +271,36 @@ while cont:
                     
                     # NULL/WAITING STIMULUS DISPLAY
                     if cur_item == 'NULL':
-                        image_path = image_text.format(f'{pre_text}/waiting.png')
+                        if 'Practice' in visual_screen_name:
+                            if last_stim_responsetime is None:
+                                center_text.text = "Too Slow."
+                            elif last_stim_accuracy == 1:
+                                center_text.text = "Correct!"
+                            elif last_stim_accuracy == 0:
+                                center_text.text = "Incorrect."
 
-                        image.setImage(image_path)
-                        scr.screen.append(image)
-                        disp.fill(screen=scr)
-                        disp.show()
-                        if withEEG:
-                            p_port.setData(int(trigger_map["Fixation / Null"]))
+                            scr.screen.append(center_text)
+                            disp.fill(screen=scr)
+                            disp.show()
 
-                        item_starttime = task_clock.getTime()
-                        item_condition = cur_item
+                            item_starttime = task_clock.getTime()
+                            item_condition = 'feedback'
 
-                        core.wait(display_time)
+                            core.wait(1.0)
+                        else:
+                            image_path = f'{image_text}{pre_text}/waiting.png'
+
+                            image.setImage(image_path)
+                            scr.screen.append(image)
+                            disp.fill(screen=scr)
+                            disp.show()
+                            if withEEG:
+                                p_port.setData(int(trigger_map["Fixation / Null"]))
+
+                            item_starttime = task_clock.getTime()
+                            item_condition = cur_item
+
+                            core.wait(display_time)
 
                         item_endtime = task_clock.getTime()
                         item_duration = item_endtime - item_starttime
@@ -291,7 +313,7 @@ while cont:
 
                     else:
                         # TASK/PRACTICE STIMULUS DISPLAY
-                        image_path = image_text.format(f'{pre_text}/{cur_item}.png')
+                        image_path = f'{image_text}{pre_text}/{cur_item}.png'
 
                         image.setImage(image_path)
                         scr.screen.append(image)
@@ -362,6 +384,10 @@ while cont:
                     slt.pushToStreamLabel('Offset_' + visual_screen_name)
                     
                     if visual_screen_name in practice_blocks:
+                        if not practice_markers_sent[visual_screen_name]:
+                            slt.pushToStreamLabel('Onset_' + visual_screen_name)
+                            practice_markers_sent[visual_screen_name] = True
+
                         if accuracy_list:
                             mean_accuracy = np.mean(accuracy_list)
                             print(f"{visual_screen_name} Accuracy: {mean_accuracy:.2f}")
@@ -398,6 +424,13 @@ while cont:
             if current_rep < len(screen_content):
                 cur_item = screen_content[current_rep]
 
+                # Only send onset marker for actual stimuli, not feedback
+                if cur_item != 'feedback':
+                    # Calculate the actual stimulus index by counting non-feedback items
+                    stim_index = sum(1 for i in range(current_rep) 
+                                   if screen_content[i] != 'feedback')
+                    slt.pushToStreamLabel('Onset_' + visual_screen_name + '_' + str(stim_index))
+                    
                 item_responsetime = None
                 item_response = None
                 item_accuracy = None
@@ -437,7 +470,7 @@ while cont:
                         pre_text = '2_options'
                     else:
                         pre_text = '4_options'
-                    image_path = image_text.format(f'{pre_text}/{cur_item}.png')
+                    image_path = f'{image_text}{pre_text}/{cur_item}.png'
 
                     image.setImage(image_path)
                     scr.screen.append(image)
@@ -458,7 +491,7 @@ while cont:
                     item_response = None
                     item_accuracy = 0
 
-                    if 'break' in visual_screen_name.lower():
+                    if 'break' in visual_screen_name.lower() or 'feedback' in visual_screen_name.lower():
                         while task_clock.getTime() - item_starttime < 60:
                             keys = event.getKeys(keyList=['space'])
                             if 'space' in keys:
