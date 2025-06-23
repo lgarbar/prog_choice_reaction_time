@@ -2,104 +2,88 @@
 
 ## Description
 
-`4rt.py` is a Python script designed to present a cognitive task involving visual stimuli and mouse button responses. The task presents a series of instructions and stimuli, requiring participants to respond to the stimuli using specific mouse button presses. The script records the timing and accuracy of these responses, outputting the data to a CSV file.
-
-## Use
-
-The script is intended for use in psychological experiments or cognitive assessments where precise timing and response recording are necessary.
+`Stimuli/4rt.py` is a Python script for presenting a cognitive reaction time task with visual stimuli and mouse button responses. The task includes instructions, practice, and test blocks, and can optionally send triggers for EEG recording. The script records timing and accuracy of responses, outputting data to a CSV file.
 
 ## Setup and Installation
 
 ### Prerequisites
 
-Before running the script, ensure you have the following installed:
+- **Python 3.x**
+- **Psychopy**: For experiment display and timing
+- **Pygaze**: For experiment control and (optionally) eye tracking
+- **Pynput**: For mouse input monitoring
+- **Pandas**: For data handling
+- **Numpy**: For numerical operations
+- **Matplotlib**: (Optional, for visualizations)
+- **Pillow (PIL)**: For image handling
 
-*   **Python 3.x**: The script is written in Python 3.
-*   **Psychopy**: A library for creating behavioral experiments.
-*   **Pygaze**: A library for eye tracking and experiment control (though eye tracking functionality may not be fully implemented in this script).
-*   **Pynput**: A library to control and monitor input devices such as mouse and keyboard.
-*   **Pandas**: A library for data manipulation and analysis.
-*   **Numpy**: A library for numerical computations.
-*   **Matplotlib**: A library for creating visualizations (though visualizations may not be directly created by this script).
+Install all required libraries with:
 
-### Installation Instructions
+```bash
+pip install psychopy pygaze pynput pandas numpy matplotlib pillow
+```
 
-1.  **Install Python**: If you don't have Python installed, download it from [python.org](https://www.python.org/) and follow the installation instructions.
+## Directory Structure
 
-2.  **Install Required Libraries**: Open a terminal or command prompt and run the following command to install the necessary libraries:
+The script expects the following structure:
 
-    ```bash
-    pip install psychopy pygaze pynput pandas numpy matplotlib
-    ```
-
-### Directory Structure
-
-The script expects a specific directory structure for stimuli and order files:
-
-*   `Stimuli/`: Contains all stimuli-related files.
-    *   `Images/`: Contains the image files used as stimuli.
-        *   `1_option/`: Images for the first block of trials.
-        *   `2_options/`: Images for the second block of trials.
-        *   `4_options/`: Images for the third block of trials.
-    *   `Order/`: Contains the order files (text files listing image names).
-        *   `1_option/`: Order files for the first block of trials.
-        *   `2_options/`: Order files for the second block of trials.
-        *   `4_options/`: Order files for the third block of trials.
-
-Ensure that the paths defined in the script (`image_text`, `one_opt_dirs`, `two_opt_dirs`, `four_opt_dirs`) match your actual directory structure.
+- `Stimuli/`
+  - `Images/` (with subfolders: `1_option/`, `2_options/`, `4_options/`)
+  - `Schedules/`
+    - `1_option/`, `2_options/`, `4_options/` (with `.par` schedule files)
+    - `practice/` (with `.csv` practice schedule files)
+  - `Order/` (not used by default in current script)
+  - `trigger_map.json` (required if using EEG triggers)
 
 ## Running the Script
 
-To run the script, execute the following command in the terminal or command prompt:
+Run the script from the project root:
 
-bash
-```
-python Stimuli/4rt.py --filename <output_file_name.csv>
+```bash
+python Stimuli/4rt.py --filename <output_file_name.csv> [--withEEG True|False] [--portAddress <int>]
 ```
 
 ### Command-Line Arguments
 
-*   `--filename`: Specifies the name of the output CSV file where the data will be saved. This argument is required.
+- `--filename` (required): Output CSV file for data.
+- `--withEEG` (optional, default: False): Set to True to enable EEG trigger output.
+- `--portAddress` (optional, default: 0): Parallel port address for EEG triggers.
 
-## Output
+## Features and Task Flow
 
-The script generates a CSV file containing the data recorded during the task. The CSV file includes the following columns:
-
-*   `sectionname`: The name of the section or trial (e.g., instruction, stimulus).
-*   `starttime`: The start time of the section.
-*   `endtime`: The end time of the section.
-*   `duration`: The duration of the section.
-*   `responsetime`: The time at which the participant responded.
-*   `delta`: The time difference between the stimulus onset and the response.
-*   `condition`: The stimulus condition.
-*   `response`: The participant's response (mouse button pressed).
-*   `accuracy`: Whether the response was correct (1) or incorrect (0).
+- **Instructions**: Multiple instruction screens guide the participant.
+- **Practice Blocks**: Two practice blocks (quad-choice, spatial cue and central presentation). Each must be passed with ≥80% accuracy (up to 3 attempts each).
+- **Test Blocks**: Three main blocks (1-option, 2-option, 4-option), each with two sub-blocks (spatial cue and central presentation).
+- **Stimulus Presentation**: Images are shown for a fixed duration (default 2s). Mouse button responses are recorded.
+- **Response Mapping**: Mouse buttons are mapped to responses (left, middle left, middle right, right). Mapping differs slightly by OS.
+- **EEG Triggers**: If enabled, sends triggers for instructions, block starts, stimulus onset, and responses using a parallel port and `trigger_map.json`.
+- **Data Output**: All events are logged with timing, response, and accuracy to the specified CSV file.
 
 ## Customization
 
-### Visual Stimuli
+- **Visual Stimuli**: Place images in the appropriate `Stimuli/Images/<block>/` folders. File names must match those referenced in schedule files.
+- **Schedules**: Edit or add `.par` files in `Stimuli/Schedules/<block>/` for test blocks, and `.csv` files in `Stimuli/Schedules/practice/` for practice blocks.
+- **Response Mapping**: To change which mouse buttons correspond to which responses, edit the `on_click` function in the script.
+- **Timing**: Adjust `image_display_duration` in the script for stimulus duration.
+- **EEG Triggers**: Edit `trigger_map.json` to match your EEG system's trigger codes.
 
-The visual stimuli and instructions are defined in the `visuals` dictionary within the script. You can modify this dictionary to change the content and order of the stimuli.
+## Output
 
-### Order Files
+The output CSV contains:
 
-The order of stimuli is determined by the text files located in the `Stimuli/Order/` directories. Each text file lists the names of the image files to be presented in a specific block of trials.
-
-### Response Mapping
-
-The mapping between mouse buttons and responses is defined in the `on_click` function. You can modify this function to change the response mapping.
-
-### Timing
-
-The timing of the task (e.g., stimulus duration, inter-trial interval) can be adjusted by modifying the `image_display_duration` variable and other timing-related parameters in the script.
+- `sectionname`: Name of the event/trial
+- `starttime`, `endtime`, `duration`: Timing info
+- `responsetime`: Time of participant response
+- `delta`: Time from stimulus onset to response
+- `condition`: Stimulus condition
+- `response`: Which button was pressed
+- `accuracy`: 1 (correct) or 0 (incorrect)
 
 ## Notes
 
-*   Ensure that the image files used as stimuli are located in the correct directories and that the file names match the names listed in the order files.
-*   The script uses the `psychopy` and `pygaze` libraries for display and timing. Make sure these libraries are properly installed and configured.
-*   The script records mouse button responses using the `pynput` library. Ensure that the necessary permissions are granted for the script to access the mouse.
+- Ensure all required images and schedule files are present in the correct folders.
+- For EEG, make sure the parallel port address and trigger map are correct.
+- The script will end a practice block early if accuracy is sufficient, or after 3 failed attempts.
+- Press `escape` during a trial to exit the experiment.
 
-# TODO
-* Update practice blocks (no practicing each condition in a separate block. Rather, 2 blocks of quad choice blocks: block 1 - spatial cue; block 2: central presentation)
-* Update each experimental block to have 2 subblocks: block 1 - spatial cue; block 2: central presentation
 
